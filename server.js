@@ -19,13 +19,13 @@ app.use(express.json({ extended: false }));
 app.get('/', async (req, res) => {
     const client = new Client(db);
     await client.connect();
-    const selectAll = await client.query('select MAX(id) max from transactions;');
+    const selectAll = await client.query(`SELECT id, status FROM transactions WHERE platenumber ILIKE 'B 1549 RFS' ORDER BY id DESC LIMIT 1`);
     await client.end();
     console.log(selectAll);
     return res.send(selectAll.rows[0]);
 });
 
-app.post('/api/sendPhoto', async (req, res) => {
+app.post('/api/send-photo', async (req, res) => {
     if (!req.body.image) {
         return res.status(400).json({
             status: 'Failed'
@@ -50,7 +50,7 @@ app.post('/api/sendPhoto', async (req, res) => {
     const printedResult = await readTextFromURL(computerVisionClient, input);
     let output = printRecText(printedResult);
     const match = output.match(/[A-Z]{1,2}\s{1}\d{1,4}\s{1}[A-Z]{1,3}/);
-    if (match.length == 0) {
+    if (match == null) {
         return res.status(404).json({
             status: 'Failed'
         });
@@ -77,7 +77,7 @@ app.post('/api/sendPhoto', async (req, res) => {
         const minute = time.getMinutes();
 
         const transaction = await client.query(`SELECT id, status FROM transactions WHERE platenumber ILIKE $1 ORDER BY id DESC LIMIT 1`, [licensePlate]);
-        if (transaction.rows[0].id != null && (transaction.rows[0].status == 'Inside')) {
+        if (transaction.rowCount != 0 && (transaction.rows[0].status == 'Inside')) {
                 // UPDATE OUTSIDE
                 const transId = transaction.rows[0].id;
                 const updateTrans = await client.query(`UPDATE transactions SET yearout = $1, 
